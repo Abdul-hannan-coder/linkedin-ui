@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #5db0ff;
+  --color-primary-foreground: #FFFFFF;
+}
+
+:root {
+  /* Slightly darker sky blue background for better contrast with white cards */
+  --background: #F4F9FF; 
+  --foreground: #0F172A;
+  --primary: #5db0ff;
+}
+
+html {
+  font-size: 14px; /* Reducing base font size from default 16px */
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+.grid-bg {
+  background-size: 50px 50px; /* Slightly smaller grid */
+  background-image: 
+    linear-gradient(to right, rgba(92, 177, 255, 0.1) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(92, 177, 255, 0.1) 1px, transparent 1px);
+}
+
+.glow-effect {
+  position: absolute;
+  filter: blur(100px);
+  background: radial-gradient(circle, rgba(92, 177, 255, 0.2) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Custom container to be slightly more compact */
+.container {
+  max-width: 1200px !important;
+}
+
+/* Custom Scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
