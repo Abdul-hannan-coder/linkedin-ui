@@ -45,6 +45,7 @@ export const authReducer = (
     case 'AUTH_LOGOUT':
       return {
         ...initialState,
+        isLoading: false, // Ensure loading is false after logout
       };
 
     case 'AUTH_RESET_ERROR':

@@ -9,7 +9,7 @@ import { LoginRequest, SignupRequest, AuthState } from './types';
 import { initiateGoogleOAuth } from './googleOAuth';
 
 export const useAuth = () => {
-  const [state, dispatch] = useReducer(authReducer, initialState);
+  const [state, dispatch] = useReducer(authReducer, { ...initialState, isLoading: true });
   const [isGoogleOAuthLoading, setIsGoogleOAuthLoading] = useState(false);
   const initializedRef = useRef(false);
 
@@ -20,6 +20,8 @@ export const useAuth = () => {
     
     const token = getToken();
     if (token) {
+      // Set loading state during check
+      dispatch({ type: 'AUTH_START' });
       // Try to get user profile if token exists
       getCurrentUser()
         .then((user) => {
@@ -33,6 +35,9 @@ export const useAuth = () => {
           logoutApi();
           dispatch({ type: 'AUTH_LOGOUT' });
         });
+    } else {
+      // No token, mark as not loading
+      dispatch({ type: 'AUTH_LOGOUT' });
     }
   }, []);
 

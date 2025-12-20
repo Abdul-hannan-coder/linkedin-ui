@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Github, Chrome, ArrowLeft, CheckCircle2 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/auth";
 
@@ -17,11 +17,26 @@ export default function SignupPage() {
   const router = useRouter();
   const pathname = usePathname();
   const { signup, isLoading, error, isAuthenticated, clearError, loginWithGoogle, isGoogleOAuthLoading } = useAuth();
+  const redirectingRef = useRef(false);
+  const lastPathnameRef = useRef(pathname);
 
-  // Redirect if already authenticated (with guard to prevent loops)
+  // Reset redirect flag when pathname changes
   useEffect(() => {
-    if (isAuthenticated && !isLoading && pathname === "/signup") {
-      // Use replace instead of push to prevent back button issues
+    if (lastPathnameRef.current !== pathname) {
+      redirectingRef.current = false;
+      lastPathnameRef.current = pathname;
+    }
+  }, [pathname]);
+
+  // Redirect if authenticated (check when auth state changes or on mount)
+  useEffect(() => {
+    if (pathname !== "/signup" || redirectingRef.current || isLoading) return;
+    
+    // Check both state and localStorage as source of truth
+    const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+    
+    if (isAuthenticated || token) {
+      redirectingRef.current = true;
       router.replace("/dashboard/profile");
     }
   }, [isAuthenticated, isLoading, pathname, router]);
@@ -30,16 +45,13 @@ export default function SignupPage() {
     e.preventDefault();
     clearError();
 
-    const result = await signup({
+    // Don't redirect here - let the useEffect handle it after state updates
+    await signup({
       full_name: fullName,
       username,
       email,
       password,
     });
-
-    if (result.success) {
-      router.replace("/dashboard/profile");
-    }
   };
   return (
     <div className="min-h-screen relative flex items-center justify-center p-6 overflow-hidden">

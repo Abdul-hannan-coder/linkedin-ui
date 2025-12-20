@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Github, Chrome, ArrowLeft } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/auth";
 
@@ -15,11 +15,26 @@ export default function LoginPage() {
   const router = useRouter();
   const pathname = usePathname();
   const { login, isLoading, error, isAuthenticated, clearError, loginWithGoogle, isGoogleOAuthLoading } = useAuth();
+  const redirectingRef = useRef(false);
+  const lastPathnameRef = useRef(pathname);
 
-  // Redirect if already authenticated (with guard to prevent loops)
+  // Reset redirect flag when pathname changes
   useEffect(() => {
-    if (isAuthenticated && !isLoading && pathname === "/login") {
-      // Use replace instead of push to prevent back button issues
+    if (lastPathnameRef.current !== pathname) {
+      redirectingRef.current = false;
+      lastPathnameRef.current = pathname;
+    }
+  }, [pathname]);
+
+  // Redirect if authenticated (check when auth state changes or on mount)
+  useEffect(() => {
+    if (pathname !== "/login" || redirectingRef.current || isLoading) return;
+    
+    // Check both state and localStorage as source of truth
+    const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+    
+    if (isAuthenticated || token) {
+      redirectingRef.current = true;
       router.replace("/dashboard/profile");
     }
   }, [isAuthenticated, isLoading, pathname, router]);
@@ -30,10 +45,8 @@ export default function LoginPage() {
 
     const result = await login({ email, password });
     
-    if (result.success) {
-      // Use replace to prevent navigation loop
-      router.replace("/dashboard/profile");
-    }
+    // Don't redirect here - let the useEffect handle it after state updates
+    // This prevents double redirects and race conditions
   };
 
   return (

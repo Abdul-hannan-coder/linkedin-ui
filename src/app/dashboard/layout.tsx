@@ -2,8 +2,8 @@
 
 import { DashboardSidebar } from "@/components/dashboard/sidebar";
 import { useAuth } from "@/hooks/auth";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import { useEffect, useRef } from "react";
 
 export default function DashboardLayout({
   children,
@@ -12,13 +12,32 @@ export default function DashboardLayout({
 }) {
   const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
+  const redirectingRef = useRef(false);
+  const lastPathnameRef = useRef(pathname);
+
+  // Reset redirect flag when pathname changes
+  useEffect(() => {
+    if (lastPathnameRef.current !== pathname) {
+      redirectingRef.current = false;
+      lastPathnameRef.current = pathname;
+    }
+  }, [pathname]);
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      // Use replace to prevent navigation loop
+    // Don't redirect if already redirecting or still loading
+    if (redirectingRef.current || isLoading || !pathname?.startsWith("/dashboard")) return;
+    
+    // Check localStorage as source of truth
+    const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+    const hasToken = !!token;
+    
+    // If no token and not authenticated, redirect to login
+    if (!hasToken && !isAuthenticated) {
+      redirectingRef.current = true;
       router.replace("/login");
     }
-  }, [isAuthenticated, isLoading, router]);
+  }, [isLoading, isAuthenticated, pathname, router]);
 
   // Show loading state while checking authentication
   if (isLoading) {
