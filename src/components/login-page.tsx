@@ -30,29 +30,49 @@ export default function LoginPage() {
     }
   }, [pathname]);
 
-  // Check LinkedIn connection when authenticated
+  // Check LinkedIn connection when authenticated (only once)
   useEffect(() => {
+    if (pathname !== "/login") return;
+    
     if (isAuthenticated && !isLoading && !linkedInCheckedRef.current) {
       linkedInCheckedRef.current = true;
       checkConnection();
     }
-  }, [isAuthenticated, isLoading, checkConnection]);
+  }, [isAuthenticated, isLoading, pathname, checkConnection]);
 
-  // Redirect based on LinkedIn connection status
+  // Redirect based on LinkedIn connection status (only after check completes)
   useEffect(() => {
-    if (pathname !== "/login" || redirectingRef.current || isLoading || linkedInLoading) return;
+    // Only redirect if we're on login page and haven't redirected yet
+    if (pathname !== "/login" || redirectingRef.current) return;
     
-    // Check both state and localStorage as source of truth
+    // Wait for auth check to complete
+    if (isLoading) return;
+    
+    // Check localStorage as source of truth
     const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
     
-    if ((isAuthenticated || token) && linkedInCheckedRef.current) {
-      redirectingRef.current = true;
-      // Redirect to LinkedIn connect if not connected, otherwise to dashboard
-      if (!isConnected) {
-        router.replace("/linkedin-connect");
-      } else {
-        router.replace("/dashboard/profile");
-      }
+    // Must have token (user is authenticated)
+    if (!token) return; // Not authenticated, stay on login
+    
+    // LinkedIn check must have been initiated
+    if (!linkedInCheckedRef.current) {
+      return; // Will be handled by the check connection useEffect
+    }
+    
+    // Wait for LinkedIn check to complete
+    if (linkedInLoading) return;
+    
+    // Only redirect once after all checks complete
+    if (redirectingRef.current) return;
+    
+    redirectingRef.current = true;
+    
+    // Redirect based on connection status
+    // If isConnected is true, go to dashboard; if false, go to LinkedIn connect
+    if (isConnected) {
+      router.replace("/dashboard/profile");
+    } else {
+      router.replace("/linkedin-connect");
     }
   }, [isAuthenticated, isLoading, isConnected, linkedInLoading, pathname, router]);
 

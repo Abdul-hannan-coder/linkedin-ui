@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useLinkedIn } from "@/hooks/linkedin";
 import { useAuth } from "@/hooks/auth";
 import { Button } from "@/components/ui/button";
@@ -10,35 +10,49 @@ import { Linkedin, Loader2, CheckCircle2, XCircle } from "lucide-react";
 
 export default function LinkedInConnectPage() {
   const router = useRouter();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const { isConnected, isLoading, error, connectLinkedIn, checkConnection } = useLinkedIn();
   const [isConnecting, setIsConnecting] = useState(false);
+  const redirectingRef = useRef(false);
 
-  // Redirect to login if not authenticated
+  // Redirect to login if not authenticated (with guards)
   useEffect(() => {
-    if (!isAuthenticated) {
+    // Wait for auth check to complete
+    if (authLoading || redirectingRef.current) return;
+    
+    // Check localStorage as source of truth
+    const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+    
+    // Only redirect if definitely not authenticated (no token in localStorage)
+    if (!token && !isAuthenticated) {
+      redirectingRef.current = true;
       router.replace("/login");
     }
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, authLoading, router]);
 
-  // Check connection status on mount
+  // Check connection status on mount (only once)
+  const checkedRef = useRef(false);
   useEffect(() => {
-    if (isAuthenticated) {
+    if (!authLoading && isAuthenticated && !checkedRef.current) {
+      checkedRef.current = true;
       checkConnection();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthenticated]); // checkConnection is stable, safe to omit
+  }, [isAuthenticated, authLoading]); // checkConnection is stable, safe to omit
 
-  // Redirect to dashboard if already connected
+  // Redirect to dashboard if already connected (with guards)
   useEffect(() => {
+    if (redirectingRef.current || authLoading) return;
+    
     if (isConnected && !isLoading) {
+      redirectingRef.current = true;
       // Small delay to show success state
       const timer = setTimeout(() => {
         router.replace("/dashboard/profile");
       }, 2000);
       return () => clearTimeout(timer);
     }
-  }, [isConnected, isLoading, router]);
+  }, [isConnected, isLoading, authLoading, router]);
 
   const handleConnect = async () => {
     setIsConnecting(true);
@@ -86,8 +100,22 @@ export default function LinkedInConnectPage() {
     }
   };
 
-  if (!isAuthenticated) {
-    return null;
+  // Show loading while checking auth
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 text-primary animate-spin mx-auto mb-4" />
+          <p className="text-slate-600 font-medium">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Check token directly as source of truth
+  const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+  if (!isAuthenticated && !token) {
+    return null; // Will redirect via useEffect
   }
 
   return (
