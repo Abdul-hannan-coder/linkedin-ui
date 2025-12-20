@@ -1,40 +1,35 @@
 // Google OAuth Popup Handler
 
-import { getGoogleOAuthDebug, getToken } from './api';
+import { getToken } from './api';
 
 /**
  * Open Google OAuth popup and handle callback
  */
 export const initiateGoogleOAuth = async (
   onSuccess?: () => void,
-  onError?: (error: Error) => void
+  onError?: (error: Error) => void,
+  redirectUri?: string
 ): Promise<void> => {
   try {
-    const token = getToken();
-    let authUrl: string;
+    // Get current origin for redirect_uri
+    const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://linkedin-sooty-five.vercel.app';
+    const finalRedirectUri = redirectUri || '/linkedin-connect';
+    
 
-    if (token) {
-      // User is authenticated - get OAuth URL from backend (for linking account)
-      try {
-        const debug = await getGoogleOAuthDebug();
-        authUrl = debug.generated_auth_url;
-        
-        if (!authUrl) {
-          throw new Error('Failed to get Google OAuth URL from backend');
-        }
-      } catch {
-        throw new Error('Failed to get Google OAuth URL from backend');
-      }
-    } else {
-      // User is not authenticated - construct OAuth URL directly (for login/signup)
-      // Using known Google OAuth configuration
-      const clientId = '132195997917-ehh86lrhph7ps16enls8096abjr4kr55.apps.googleusercontent.com';
-      const redirectUri = encodeURIComponent('https://backend.postsiva.com/auth/google/callback');
-      const scope = encodeURIComponent('openid email profile');
-      
-      authUrl = `https://accounts.google.com/o/oauth2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&scope=${scope}&response_type=code&access_type=offline&prompt=consent`;
-    }
+    // Always use backend endpoint with redirect_uri and origin parameters
+    // This ensures the backend knows where to redirect after OAuth completes
+    const params = new URLSearchParams();
+    params.append('redirect_uri', finalRedirectUri);
+    params.append('origin', currentOrigin);
+    
+    // Always use backend login endpoint with redirect_uri and origin parameters
+    // This ensures the backend knows where to redirect after OAuth completes
+    const authUrl = `https://backend.postsiva.com/auth/google/login?${params.toString()}`;
 
+
+
+
+    
     // Open popup window
     const width = 500;
     const height = 600;

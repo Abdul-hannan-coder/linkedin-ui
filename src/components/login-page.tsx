@@ -177,7 +177,7 @@ export default function LoginPage() {
             <Button 
               variant="outline" 
               className="h-14 rounded-2xl gap-3 font-bold bg-white/50 border-slate-200 hover:border-primary disabled:opacity-50"
-              onClick={() => loginWithGoogle()}
+              onClick={() => loginWithGoogle('/dashboard')}
               disabled={isLoading || isGoogleOAuthLoading}
             >
               <Chrome className="w-5 h-5" />

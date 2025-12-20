@@ -121,7 +121,7 @@ export const useAuth = () => {
   /**
    * Login/Signup with Google OAuth
    */
-  const loginWithGoogle = useCallback(async () => {
+  const loginWithGoogle = useCallback(async (redirectUri?: string) => {
     setIsGoogleOAuthLoading(true);
     dispatch({ type: 'AUTH_RESET_ERROR' });
 
@@ -155,7 +155,8 @@ export const useAuth = () => {
             type: 'AUTH_FAILURE',
             payload: error.message || 'Google OAuth failed',
           });
-        }
+        },
+        redirectUri // Pass redirect_uri to OAuth hook
       );
     } catch (error) {
       setIsGoogleOAuthLoading(false);

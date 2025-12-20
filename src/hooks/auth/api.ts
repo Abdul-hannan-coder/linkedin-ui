@@ -160,8 +160,9 @@ export const getGoogleOAuthLoginUrl = async (): Promise<string> => {
 /**
  * Get Google OAuth debug information (includes auth URL)
  */
-export const getGoogleOAuthDebug = async (): Promise<GoogleOAuthDebug> => {
-  return apiRequest<GoogleOAuthDebug>('/auth/google/debug', {
+export const getGoogleOAuthDebug = async (queryParams?: string): Promise<GoogleOAuthDebug> => {
+  const endpoint = queryParams ? `/auth/google/debug?${queryParams}` : '/auth/google/debug';
+  return apiRequest<GoogleOAuthDebug>(endpoint, {
     method: 'GET',
   });
 };
