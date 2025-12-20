@@ -98,11 +98,17 @@ export const usePost = () => {
             }
 
             const imageUrls = await uploadFiles([files[0]]);
+            
+            if (!imageUrls[0]) {
+              throw new Error('Failed to get image URL from upload');
+            }
+
             const data: ImagePostData = {
-              text: content,
+              text: content.trim() || '', // Ensure text is always provided, even if empty
               image_url: imageUrls[0],
               visibility,
             };
+            
             result = await createImagePost(data);
             break;
           }
