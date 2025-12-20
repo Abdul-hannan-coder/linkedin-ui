@@ -102,7 +102,11 @@ export default function ProfilePage() {
         </div>
         
         {error && (
-          <div className="mt-4 p-3 bg-red-500/20 border border-red-500/30 rounded-xl flex items-center gap-2 text-red-100 text-sm">
+          <motion.div 
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            className="mt-4 p-3 bg-red-500/20 border border-red-500/30 rounded-xl flex items-center gap-2 text-red-100 text-sm"
+          >
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{error}</span>
             <button 
@@ -111,7 +115,7 @@ export default function ProfilePage() {
             >
               Dismiss
             </button>
-          </div>
+          </motion.div>
         )}
         
         {/* Decorative elements */}

@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { getLinkedInProfile } from './api';
 import { LinkedInProfile, LinkedInProfileState } from './types';
 
