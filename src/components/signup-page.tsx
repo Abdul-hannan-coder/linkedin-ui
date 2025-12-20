@@ -6,7 +6,7 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Github, Chrome, ArrowLeft, CheckCircle2 } from "lucide-react";
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/auth";
 
 export default function SignupPage() {
@@ -15,14 +15,16 @@ export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const router = useRouter();
+  const pathname = usePathname();
   const { signup, isLoading, error, isAuthenticated, clearError, loginWithGoogle, isGoogleOAuthLoading } = useAuth();
 
-  // Redirect if already authenticated
+  // Redirect if already authenticated (with guard to prevent loops)
   useEffect(() => {
-    if (isAuthenticated) {
-      router.push("/dashboard/profile");
+    if (isAuthenticated && !isLoading && pathname === "/signup") {
+      // Use replace instead of push to prevent back button issues
+      router.replace("/dashboard/profile");
     }
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, isLoading, pathname, router]);
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,7 +38,7 @@ export default function SignupPage() {
     });
 
     if (result.success) {
-      router.push("/dashboard/profile");
+      router.replace("/dashboard/profile");
     }
   };
   return (

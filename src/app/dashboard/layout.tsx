@@ -15,7 +15,8 @@ export default function DashboardLayout({
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      router.push("/login");
+      // Use replace to prevent navigation loop
+      router.replace("/login");
     }
   }, [isAuthenticated, isLoading, router]);
 

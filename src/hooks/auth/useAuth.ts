@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useReducer, useCallback, useEffect, useState } from 'react';
+import { useReducer, useCallback, useEffect, useState, useMemo, useRef } from 'react';
 import { authReducer, initialState } from './reducer';
 import { login, signup, getCurrentUser, logout as logoutApi, getToken } from './api';
 import { LoginRequest, SignupRequest, AuthState } from './types';
@@ -11,9 +11,13 @@ import { initiateGoogleOAuth } from './googleOAuth';
 export const useAuth = () => {
   const [state, dispatch] = useReducer(authReducer, initialState);
   const [isGoogleOAuthLoading, setIsGoogleOAuthLoading] = useState(false);
+  const initializedRef = useRef(false);
 
-  // Initialize auth state from localStorage on mount
+  // Initialize auth state from localStorage on mount (only once)
   useEffect(() => {
+    if (initializedRef.current) return;
+    initializedRef.current = true;
+    
     const token = getToken();
     if (token) {
       // Try to get user profile if token exists
@@ -155,7 +159,8 @@ export const useAuth = () => {
     }
   }, []);
 
-  return {
+  // Memoize return value to prevent unnecessary re-renders
+  return useMemo(() => ({
     ...state,
     login: handleLogin,
     signup: handleSignup,
@@ -164,6 +169,15 @@ export const useAuth = () => {
     clearError,
     loginWithGoogle,
     isGoogleOAuthLoading,
-  };
+  }), [
+    state,
+    handleLogin,
+    handleSignup,
+    handleLogout,
+    refreshUser,
+    clearError,
+    loginWithGoogle,
+    isGoogleOAuthLoading,
+  ]);
 };
 

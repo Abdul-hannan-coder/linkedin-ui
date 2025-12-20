@@ -23,11 +23,11 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
   // Close modal and redirect if authenticated
   useEffect(() => {
-    if (isAuthenticated && isOpen) {
+    if (isAuthenticated && !isLoading && isOpen) {
       onClose();
-      router.push('/dashboard/profile');
+      router.replace('/dashboard/profile');
     }
-  }, [isAuthenticated, isOpen, onClose, router]);
+  }, [isAuthenticated, isLoading, isOpen, onClose, router]);
 
   // Clear error when switching between login/signup
   useEffect(() => {
