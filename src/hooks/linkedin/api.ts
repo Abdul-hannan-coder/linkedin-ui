@@ -5,6 +5,8 @@ import {
   LinkedInCreateTokenResponse,
   LinkedInRefreshTokenResponse,
   LinkedInTokenData,
+  LinkedInProfileResponse,
+  LinkedInProfile,
 } from './types';
 
 const BASE_URL = 'https://backend.postsiva.com';
@@ -97,5 +99,20 @@ export const deleteLinkedInToken = async (): Promise<void> => {
   await apiRequest('/linkedin/delete-token', {
     method: 'DELETE',
   });
+};
+
+/**
+ * Get LinkedIn user profile
+ */
+export const getLinkedInProfile = async (): Promise<LinkedInProfile> => {
+  const response = await apiRequest<LinkedInProfileResponse>('/linkedin/user-profile/', {
+    method: 'GET',
+  });
+  
+  if (!response.success || !response.profile) {
+    throw new Error(response.error || 'Failed to fetch LinkedIn profile');
+  }
+  
+  return response.profile;
 };
 

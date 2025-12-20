@@ -62,3 +62,36 @@ export type LinkedInAction =
   | { type: 'LINKEDIN_DISCONNECT' }
   | { type: 'LINKEDIN_RESET_ERROR' };
 
+// LinkedIn Profile Types
+export interface LinkedInLocale {
+  language: string;
+  country: string;
+}
+
+export interface LinkedInProfile {
+  linkedin_user_id: string;
+  name: string;
+  given_name: string;
+  family_name: string;
+  email: string;
+  email_verified: boolean;
+  picture: string;
+  locale: LinkedInLocale;
+}
+
+export interface LinkedInProfileResponse {
+  success: boolean;
+  message: string;
+  profile: LinkedInProfile;
+  source: string;
+  last_updated: string;
+  error: string | null;
+}
+
+export interface LinkedInProfileState {
+  profile: LinkedInProfile | null;
+  isLoading: boolean;
+  error: string | null;
+  lastUpdated: string | null;
+}
+
