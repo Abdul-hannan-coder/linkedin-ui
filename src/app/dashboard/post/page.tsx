@@ -32,6 +32,7 @@ import { usePost, PostType, Visibility } from "@/hooks/posts";
 import { createImagePost, createVideoPost } from "@/hooks/posts/api";
 import { useLinkedInProfile } from "@/hooks/linkedin";
 import { useAuth } from "@/hooks/auth";
+import { MediaSelectorModal } from "@/components/media-selector-modal";
 
 export default function PostPage() {
   const searchParams = useSearchParams();
@@ -42,6 +43,7 @@ export default function PostPage() {
   const [storedFiles, setStoredFiles] = useState<File[]>([]);
   const [preSelectedMediaId, setPreSelectedMediaId] = useState<string | null>(null);
   const [preSelectedMediaType, setPreSelectedMediaType] = useState<'image' | 'video' | null>(null);
+  const [isMediaModalOpen, setIsMediaModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { createPost, isPosting, isUploading, error, success, clearError, resetPost } = usePost();
   const { profile, fetchProfile } = useLinkedInProfile();
@@ -206,6 +208,29 @@ export default function PostPage() {
     setPreSelectedMediaType(null);
   };
 
+  const handleMediaSelect = (mediaId: string, mediaType: 'image' | 'video', mediaUrl: string) => {
+    // Set pre-selected media
+    setPreSelectedMediaId(mediaId);
+    setPreSelectedMediaType(mediaType);
+    
+    // Set post type based on media type if not already set
+    if (mediaType === 'image' && postType === 'text') {
+      setPostType('image');
+    } else if (mediaType === 'video' && postType === 'text') {
+      setPostType('video');
+    }
+    
+    // Set preview URL
+    setPreviewUrls([mediaUrl]);
+  };
+
+  // Get filter for media modal based on post type
+  const getMediaFilter = (): 'all' | 'image' | 'video' => {
+    if (postType === 'image' || postType === 'multiple') return 'image';
+    if (postType === 'video') return 'video';
+    return 'all';
+  };
+
   const postTypes = [
     { id: "text", title: "Text Post", sub: "Share text", icon: FileText },
     { id: "image", title: "Image Post", sub: "Post with image", icon: ImageIcon },
@@ -285,7 +310,10 @@ export default function PostPage() {
             <section className="space-y-4">
               <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Media Upload</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <button className="flex items-center gap-4 h-32 px-6 rounded-[2rem] border-2 border-dashed border-slate-200 bg-slate-50 text-slate-500 font-bold hover:border-primary/50 hover:bg-primary/5 transition-all group">
+                <button 
+                  onClick={() => setIsMediaModalOpen(true)}
+                  className="flex items-center gap-4 h-32 px-6 rounded-[2rem] border-2 border-dashed border-slate-200 bg-slate-50 text-slate-500 font-bold hover:border-primary/50 hover:bg-primary/5 transition-all group"
+                >
                    <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center border border-slate-100 shadow-sm">
                     <Database className="w-6 h-6 text-slate-400 group-hover:text-primary" />
                    </div>
@@ -508,6 +536,14 @@ export default function PostPage() {
           </div>
         </div>
       </div>
+
+      {/* Media Selector Modal */}
+      <MediaSelectorModal
+        isOpen={isMediaModalOpen}
+        onClose={() => setIsMediaModalOpen(false)}
+        onSelect={handleMediaSelect}
+        filter={getMediaFilter()}
+      />
     </div>
   );
 }
