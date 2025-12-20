@@ -18,22 +18,25 @@ import {
   Users,
   Sparkles,
   Database,
-  X
+  X,
+  Loader2,
+  AlertCircle,
+  CheckCircle2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/input";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
-
-type PostType = "text" | "image" | "multiple" | "video";
-type Visibility = "public" | "connections";
+import { usePost, PostType, Visibility } from "@/hooks/posts";
 
 export default function PostPage() {
   const [postType, setPostType] = useState<PostType>("text");
   const [content, setContent] = useState("");
   const [visibility, setVisibility] = useState<Visibility>("public");
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+  const [storedFiles, setStoredFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { createPost, isPosting, isUploading, error, success, clearError, resetPost } = usePost();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -42,14 +45,71 @@ export default function PostPage() {
       
       if (postType === "multiple") {
         setPreviewUrls(prev => [...prev, ...newUrls].slice(0, 20));
+        setStoredFiles(prev => [...prev, ...files].slice(0, 20));
       } else {
         setPreviewUrls(newUrls.slice(0, 1));
+        setStoredFiles(files.slice(0, 1));
       }
+    }
+    
+    // Reset input value to allow selecting the same file again
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
 
   const removeFile = (index: number) => {
+    // Revoke object URL to free memory
+    URL.revokeObjectURL(previewUrls[index]);
+    
     setPreviewUrls(prev => prev.filter((_, i) => i !== index));
+    setStoredFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSubmit = async () => {
+    // Clear any previous errors
+    clearError();
+    
+    // Validate content
+    if (!content.trim()) {
+      return;
+    }
+
+    // Validate files based on post type
+    if (postType !== "text" && storedFiles.length === 0) {
+      return;
+    }
+
+    if (postType === "multiple" && storedFiles.length < 2) {
+      return;
+    }
+
+    try {
+      const result = await createPost(postType, content, storedFiles, visibility);
+      
+      if (result.success) {
+        // Reset form on success
+        setContent('');
+        setPreviewUrls([]);
+        setStoredFiles([]);
+        
+        // Reset post state after a delay
+        setTimeout(() => {
+          resetPost();
+        }, 3000);
+      }
+    } catch (error) {
+      // Error is handled by the hook
+      console.error('Failed to create post:', error);
+    }
+  };
+
+  const handlePostTypeChange = (newType: PostType) => {
+    setPostType(newType);
+    // Clear files when changing post type
+    previewUrls.forEach(url => URL.revokeObjectURL(url));
+    setPreviewUrls([]);
+    setStoredFiles([]);
   };
 
   const postTypes = [
@@ -77,10 +137,7 @@ export default function PostPage() {
                 return (
                   <button
                     key={type.id}
-                    onClick={() => {
-                      setPostType(type.id as PostType);
-                      setPreviewUrls([]);
-                    }}
+                    onClick={() => handlePostTypeChange(type.id as PostType)}
                     className={cn(
                       "flex flex-col items-center gap-2 p-4 rounded-3xl border-2 transition-all duration-300 text-center relative overflow-hidden group",
                       isActive 
@@ -186,10 +243,45 @@ export default function PostPage() {
               </div>
             </section>
 
-            <section className="w-full md:w-auto">
-              <Button className="w-full h-14 rounded-2xl text-base font-black gap-3 shadow-xl shadow-primary/20 px-10">
-                <Check className="w-5 h-5" />
-                Post to LinkedIn
+            <section className="w-full md:w-auto space-y-4">
+              {error && (
+                <div className="p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm font-bold text-red-900">{error}</p>
+                    <button
+                      onClick={clearError}
+                      className="text-xs text-red-600 hover:text-red-800 underline mt-1"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                </div>
+              )}
+              
+              {success && (
+                <div className="p-4 bg-green-50 border border-green-200 rounded-xl flex items-center gap-3">
+                  <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
+                  <p className="text-sm font-bold text-green-900">Post created successfully!</p>
+                </div>
+              )}
+              
+              <Button 
+                onClick={handleSubmit}
+                disabled={isPosting || isUploading || !content.trim() || (postType !== "text" && storedFiles.length === 0)}
+                className="w-full h-14 rounded-2xl text-base font-black gap-3 shadow-xl shadow-primary/20 px-10 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isPosting || isUploading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    {isUploading ? "Uploading..." : "Posting..."}
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-5 h-5" />
+                    Post to LinkedIn
+                  </>
+                )}
               </Button>
             </section>
           </div>
