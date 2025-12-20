@@ -139,6 +139,7 @@ export const useAuth = () => {
                 type: 'AUTH_SUCCESS',
                 payload: { user, token },
               });
+              // Note: LinkedIn check will be handled by the component's useEffect
             } catch {
               dispatch({
                 type: 'AUTH_FAILURE',

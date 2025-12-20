@@ -8,6 +8,7 @@ import { Github, Chrome, ArrowLeft, CheckCircle2 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/auth";
+import { useLinkedIn } from "@/hooks/linkedin";
 
 export default function SignupPage() {
   const [fullName, setFullName] = useState("");
@@ -17,29 +18,45 @@ export default function SignupPage() {
   const router = useRouter();
   const pathname = usePathname();
   const { signup, isLoading, error, isAuthenticated, clearError, loginWithGoogle, isGoogleOAuthLoading } = useAuth();
+  const { isConnected, isLoading: linkedInLoading, checkConnection } = useLinkedIn();
   const redirectingRef = useRef(false);
   const lastPathnameRef = useRef(pathname);
+  const linkedInCheckedRef = useRef(false);
 
   // Reset redirect flag when pathname changes
   useEffect(() => {
     if (lastPathnameRef.current !== pathname) {
       redirectingRef.current = false;
+      linkedInCheckedRef.current = false;
       lastPathnameRef.current = pathname;
     }
   }, [pathname]);
 
-  // Redirect if authenticated (check when auth state changes or on mount)
+  // Check LinkedIn connection when authenticated
   useEffect(() => {
-    if (pathname !== "/signup" || redirectingRef.current || isLoading) return;
+    if (isAuthenticated && !isLoading && !linkedInCheckedRef.current) {
+      linkedInCheckedRef.current = true;
+      checkConnection();
+    }
+  }, [isAuthenticated, isLoading, checkConnection]);
+
+  // Redirect based on LinkedIn connection status
+  useEffect(() => {
+    if (pathname !== "/signup" || redirectingRef.current || isLoading || linkedInLoading) return;
     
     // Check both state and localStorage as source of truth
     const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
     
-    if (isAuthenticated || token) {
+    if ((isAuthenticated || token) && linkedInCheckedRef.current) {
       redirectingRef.current = true;
-      router.replace("/dashboard/profile");
+      // Redirect to LinkedIn connect if not connected, otherwise to dashboard
+      if (!isConnected) {
+        router.replace("/linkedin-connect");
+      } else {
+        router.replace("/dashboard/profile");
+      }
     }
-  }, [isAuthenticated, isLoading, pathname, router]);
+  }, [isAuthenticated, isLoading, isConnected, linkedInLoading, pathname, router]);
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
