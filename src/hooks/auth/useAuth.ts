@@ -5,7 +5,7 @@
 import { useReducer, useCallback, useEffect, useState, useMemo, useRef } from 'react';
 import { authReducer, initialState } from './reducer';
 import { login, signup, getCurrentUser, logout as logoutApi, getToken } from './api';
-import { LoginRequest, SignupRequest, AuthState } from './types';
+import { LoginRequest, SignupRequest } from './types';
 import { initiateGoogleOAuth } from './googleOAuth';
 
 export const useAuth = () => {
@@ -139,7 +139,7 @@ export const useAuth = () => {
                 type: 'AUTH_SUCCESS',
                 payload: { user, token },
               });
-            } catch (error) {
+            } catch {
               dispatch({
                 type: 'AUTH_FAILURE',
                 payload: 'Failed to fetch user data after Google OAuth',

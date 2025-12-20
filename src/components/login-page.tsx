@@ -43,7 +43,7 @@ export default function LoginPage() {
     e.preventDefault();
     clearError();
 
-    const result = await login({ email, password });
+    await login({ email, password });
     
     // Don't redirect here - let the useEffect handle it after state updates
     // This prevents double redirects and race conditions

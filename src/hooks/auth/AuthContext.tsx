@@ -4,17 +4,18 @@
 
 import { createContext, useContext, ReactNode } from 'react';
 import { useAuth } from './useAuth';
+import { User, LoginRequest, SignupRequest, AuthResponse } from './types';
 
 interface AuthContextType {
-  user: any;
+  user: User | null;
   token: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
   error: string | null;
-  login: (credentials: any) => Promise<any>;
-  signup: (userData: any) => Promise<any>;
+  login: (credentials: LoginRequest) => Promise<{ success: boolean; data?: AuthResponse; error?: string }>;
+  signup: (userData: SignupRequest) => Promise<{ success: boolean; data?: AuthResponse; error?: string }>;
   logout: () => void;
-  refreshUser: () => Promise<any>;
+  refreshUser: () => Promise<{ success: boolean; data?: User; error?: string }>;
   clearError: () => void;
   loginWithGoogle: () => Promise<void>;
   isGoogleOAuthLoading: boolean;

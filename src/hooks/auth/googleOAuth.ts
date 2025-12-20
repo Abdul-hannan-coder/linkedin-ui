@@ -19,7 +19,7 @@ export const initiateGoogleOAuth = async (
       try {
         // Try to get URL from login endpoint (preferred)
         authUrl = await getGoogleOAuthLoginUrl();
-      } catch (error) {
+      } catch {
         // Fallback to debug endpoint if login endpoint fails
         console.warn('Failed to get OAuth URL from login endpoint, using debug endpoint');
         const debug = await getGoogleOAuthDebug();
@@ -159,10 +159,10 @@ export const initiateGoogleOAuth = async (
             }
           }, 1500);
         }
-      } catch (e) {
-        // Cross-origin error - popup is on Google's domain, which is expected
-        // Continue polling for token changes
-      }
+        } catch {
+          // Cross-origin error - popup is on Google's domain, which is expected
+          // Continue polling for token changes
+        }
     }, 500);
 
     // Timeout after 5 minutes
@@ -182,10 +182,10 @@ export const initiateGoogleOAuth = async (
 /**
  * Handle Google OAuth callback (called from callback page)
  */
-export const handleGoogleOAuthCallback = async (code: string, state?: string): Promise<void> => {
+export const handleGoogleOAuthCallback = async (): Promise<void> => {
   // The callback is handled by the backend API
   // We just need to verify the token was set
-  const token = localStorage.getItem('access_token');
+  const token = getToken();
   if (!token) {
     throw new Error('OAuth callback failed - no token received');
   }
