@@ -185,13 +185,25 @@ export const createMultiImagePost = async (data: MultiImagePostData): Promise<Po
     throw new Error('At least one image ID is required for multi-image posts');
   }
 
+  if (data.image_ids.length < 2) {
+    throw new Error(`Multi-image posts require at least 2 images. Provided: ${data.image_ids.length}`);
+  }
+
   const formData = new FormData();
   // Append each image_id separately (as the API expects multiple fields with the same name)
-  data.image_ids.forEach(id => {
+  data.image_ids.forEach((id, index) => {
     formData.append('image_ids', id);
+    // Debug logging in development
+    if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+      console.log(`Adding image_id[${index}]:`, id);
+    }
   });
   formData.append('text', data.text || '');
   formData.append('visibility', (data.visibility || 'public').toUpperCase());
+
+  if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+    console.log(`Creating multi-image post with ${data.image_ids.length} images`);
+  }
 
   return apiRequest<PostResponse>('/linkedin/image-post/multi/', {
     method: 'POST',

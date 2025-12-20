@@ -35,15 +35,15 @@ export const usePost = () => {
       const fileIndex = index.toString();
       dispatch({ type: 'UPLOAD_START', payload: { fileIndex } });
 
-      try {
-        // Simulate progress for better UX (since we don't have real progress events)
-        const progressInterval = setInterval(() => {
-          dispatch({
-            type: 'UPLOAD_PROGRESS',
-            payload: { fileIndex, progress: 50 },
-          });
-        }, 200);
+      // Simulate progress for better UX (since we don't have real progress events)
+      const progressInterval = setInterval(() => {
+        dispatch({
+          type: 'UPLOAD_PROGRESS',
+          payload: { fileIndex, progress: 50 },
+        });
+      }, 200);
 
+      try {
         const mediaId = await uploadMedia(file, mediaType);
 
         clearInterval(progressInterval);
@@ -52,18 +52,33 @@ export const usePost = () => {
           payload: { fileIndex, progress: 100 },
         });
 
-        return mediaId;
+        return { success: true, mediaId, index };
       } catch (error) {
-        throw error;
+        clearInterval(progressInterval);
+        const errorMessage = error instanceof Error ? error.message : 'Upload failed';
+        return { success: false, error: errorMessage, index };
       }
     });
 
-    try {
-      const mediaIds = await Promise.all(uploadPromises);
-      return mediaIds;
-    } catch (error) {
-      throw error;
+    const results = await Promise.all(uploadPromises);
+    
+    // Check for any failures
+    const failures = results.filter(r => !r.success);
+    if (failures.length > 0) {
+      const errorMessages = failures.map(f => `File ${f.index + 1}: ${f.error}`).join(', ');
+      throw new Error(`Failed to upload ${failures.length} file(s): ${errorMessages}`);
     }
+    
+    // Extract media IDs and ensure all succeeded
+    const mediaIds = results
+      .filter(r => r.success)
+      .map(r => (r as { success: true; mediaId: string }).mediaId);
+    
+    if (mediaIds.length !== files.length) {
+      throw new Error(`Only ${mediaIds.length} out of ${files.length} files uploaded successfully`);
+    }
+    
+    return mediaIds;
   }, []);
 
   /**
@@ -125,6 +140,18 @@ export const usePost = () => {
             }
 
             const imageIds = await uploadFiles(files, 'image');
+            
+            // Validate that we got all the image IDs
+            if (!imageIds || imageIds.length === 0) {
+              throw new Error('Failed to upload images');
+            }
+            if (imageIds.length < 2) {
+              throw new Error(`Only ${imageIds.length} image(s) uploaded successfully. At least 2 images required.`);
+            }
+            if (imageIds.length !== files.length) {
+              throw new Error(`Only ${imageIds.length} out of ${files.length} images uploaded successfully.`);
+            }
+            
             const data: MultiImagePostData = {
               text: content,
               image_ids: imageIds,
