@@ -6,6 +6,7 @@ import {
   MultiImagePostData,
   VideoPostData,
   PostResponse,
+  MediaUploadResponse,
 } from './types';
 
 const BASE_URL = 'https://backend.postsiva.com';
@@ -78,9 +79,10 @@ const apiRequest = async <T>(
 /**
  * Upload media file
  */
-export const uploadMedia = async (file: File): Promise<string> => {
+export const uploadMedia = async (file: File, mediaType: 'image' | 'video'): Promise<string> => {
   const formData = new FormData();
-  formData.append('file', file);
+  formData.append('media', file);
+  formData.append('media_type', mediaType);
 
   const token = getAuthToken();
   
@@ -99,7 +101,7 @@ export const uploadMedia = async (file: File): Promise<string> => {
     });
 
     if (!response.ok) {
-      let errorData;
+      let errorData: { message?: string; error?: string; detail?: string };
       try {
         errorData = await response.json();
       } catch {
@@ -113,29 +115,21 @@ export const uploadMedia = async (file: File): Promise<string> => {
       throw new Error(errorMessage);
     }
 
-    const result = await response.json() as Record<string, unknown>;
+    const result = await response.json() as MediaUploadResponse;
     
-    // Check different possible response structures
-    // Try different possible field names for the URL
-    const url = (result.url as string | undefined) || 
-                ((result.data as Record<string, unknown>)?.url as string | undefined) ||
-                (result.file_url as string | undefined) || 
-                (result.media_url as string | undefined) || 
-                (((result.file as Record<string, unknown>)?.url) as string | undefined);
-    
-    if (!url) {
+    if (!result.success || !result.media_id) {
       if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
         console.error('Upload response:', result);
       }
-      throw new Error((result.error as string) || (result.message as string) || 'Failed to upload media: URL not found in response');
+      throw new Error(result.error || result.message || 'Failed to upload media: media_id not found in response');
     }
 
-    // Validate URL format
-    if (typeof url !== 'string' || url.trim() === '') {
-      throw new Error('Invalid URL returned from upload');
+    // Validate media_id format
+    if (typeof result.media_id !== 'string' || result.media_id.trim() === '') {
+      throw new Error('Invalid media_id returned from upload');
     }
 
-    return url;
+    return result.media_id;
   } catch (error) {
     // Improve error message for debugging
     if (error instanceof Error) {
@@ -164,50 +158,64 @@ export const createTextPost = async (data: PostData): Promise<PostResponse> => {
 };
 
 /**
- * Create image post (single)
+ * Create image post (single) - Uses FormData with image_id
  */
 export const createImagePost = async (data: ImagePostData): Promise<PostResponse> => {
-  // Ensure text is always a string (even if empty)
-  const payload = {
-    text: data.text || '',
-    image_url: data.image_url,
-  };
-
   // Validate required fields
-  if (!payload.image_url) {
-    throw new Error('Image URL is required for image posts');
+  if (!data.image_id) {
+    throw new Error('Image ID is required for image posts');
   }
+
+  const formData = new FormData();
+  formData.append('image_id', data.image_id);
+  formData.append('text', data.text || '');
+  formData.append('visibility', (data.visibility || 'public').toUpperCase());
 
   return apiRequest<PostResponse>('/linkedin/image-post/', {
     method: 'POST',
-    body: JSON.stringify(payload),
+    body: formData,
   });
 };
 
 /**
- * Create multi-image post
+ * Create multi-image post - Uses FormData with multiple image_ids
  */
 export const createMultiImagePost = async (data: MultiImagePostData): Promise<PostResponse> => {
+  if (!data.image_ids || data.image_ids.length === 0) {
+    throw new Error('At least one image ID is required for multi-image posts');
+  }
+
+  const formData = new FormData();
+  // Append each image_id separately (as the API expects multiple fields with the same name)
+  data.image_ids.forEach(id => {
+    formData.append('image_ids', id);
+  });
+  formData.append('text', data.text || '');
+  formData.append('visibility', (data.visibility || 'public').toUpperCase());
+
   return apiRequest<PostResponse>('/linkedin/image-post/multi/', {
     method: 'POST',
-    body: JSON.stringify({
-      text: data.text,
-      image_urls: data.image_urls,
-    }),
+    body: formData,
   });
 };
 
 /**
- * Create video post
+ * Create video post - Uses FormData with video_id
  */
 export const createVideoPost = async (data: VideoPostData): Promise<PostResponse> => {
+  if (!data.video_id) {
+    throw new Error('Video ID is required for video posts');
+  }
+
+  const formData = new FormData();
+  formData.append('video_id', data.video_id);
+  formData.append('text', data.text || '');
+  formData.append('title', data.title || 'Video Post');
+  formData.append('visibility', (data.visibility || 'public').toUpperCase());
+
   return apiRequest<PostResponse>('/linkedin/video-post/', {
     method: 'POST',
-    body: JSON.stringify({
-      text: data.text,
-      title: data.title,
-      video_url: data.video_url,
-    }),
+    body: formData,
   });
 };
 

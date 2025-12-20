@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   FileText, 
@@ -28,6 +28,8 @@ import { Textarea } from "@/components/ui/input";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { usePost, PostType, Visibility } from "@/hooks/posts";
+import { useLinkedInProfile } from "@/hooks/linkedin";
+import { useAuth } from "@/hooks/auth";
 
 export default function PostPage() {
   const [postType, setPostType] = useState<PostType>("text");
@@ -37,6 +39,26 @@ export default function PostPage() {
   const [storedFiles, setStoredFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { createPost, isPosting, isUploading, error, success, clearError, resetPost } = usePost();
+  const { profile, fetchProfile } = useLinkedInProfile();
+  const { user } = useAuth();
+
+  // Fetch profile on mount
+  useEffect(() => {
+    fetchProfile();
+  }, [fetchProfile]);
+
+  // Get display name and avatar
+  const displayName = profile?.name || user?.full_name || 'User';
+  const profilePicture = profile?.picture || null;
+  
+  // Get initials for avatar fallback
+  const getInitials = (name: string) => {
+    const parts = name.split(' ');
+    if (parts.length >= 2) {
+      return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -294,10 +316,23 @@ export default function PostPage() {
             <div className="bg-white rounded-[2rem] border border-slate-100 shadow-2xl overflow-hidden">
                {/* LinkedIn Post Header */}
                <div className="p-4 flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 font-bold">MU</div>
+                  <div className="w-12 h-12 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 font-bold overflow-hidden relative">
+                    {profilePicture ? (
+                      <Image 
+                        src={profilePicture} 
+                        alt={displayName}
+                        width={48}
+                        height={48}
+                        className="w-full h-full object-cover rounded-full"
+                        unoptimized
+                      />
+                    ) : (
+                      <span>{getInitials(displayName)}</span>
+                    )}
+                  </div>
                   <div className="flex-1">
                     <div className="flex items-center gap-1">
-                      <span className="font-black text-slate-900 text-sm">Muhammad Uzair Yasin</span>
+                      <span className="font-black text-slate-900 text-sm">{displayName}</span>
                       <span className="text-slate-400 text-xs font-medium">• Just now</span>
                     </div>
                     <div className="flex items-center gap-1 text-slate-400">

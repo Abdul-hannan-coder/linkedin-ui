@@ -24,9 +24,9 @@ export const usePost = () => {
   const [state, dispatch] = useReducer(postReducer, initialState);
 
   /**
-   * Upload multiple files
+   * Upload multiple files - Returns media_ids
    */
-  const uploadFiles = useCallback(async (files: File[]): Promise<string[]> => {
+  const uploadFiles = useCallback(async (files: File[], mediaType: 'image' | 'video'): Promise<string[]> => {
     if (files.length === 0) return [];
 
     dispatch({ type: 'POST_START' });
@@ -44,7 +44,7 @@ export const usePost = () => {
           });
         }, 200);
 
-        const url = await uploadMedia(file);
+        const mediaId = await uploadMedia(file, mediaType);
 
         clearInterval(progressInterval);
         dispatch({
@@ -52,15 +52,15 @@ export const usePost = () => {
           payload: { fileIndex, progress: 100 },
         });
 
-        return url;
+        return mediaId;
       } catch (error) {
         throw error;
       }
     });
 
     try {
-      const urls = await Promise.all(uploadPromises);
-      return urls;
+      const mediaIds = await Promise.all(uploadPromises);
+      return mediaIds;
     } catch (error) {
       throw error;
     }
@@ -97,15 +97,15 @@ export const usePost = () => {
               throw new Error('Image file is required for image posts');
             }
 
-            const imageUrls = await uploadFiles([files[0]]);
+            const imageIds = await uploadFiles([files[0]], 'image');
             
-            if (!imageUrls[0]) {
-              throw new Error('Failed to get image URL from upload');
+            if (!imageIds[0]) {
+              throw new Error('Failed to get image ID from upload');
             }
 
             const data: ImagePostData = {
               text: content.trim() || '', // Ensure text is always provided, even if empty
-              image_url: imageUrls[0],
+              image_id: imageIds[0],
               visibility,
             };
             
@@ -124,10 +124,10 @@ export const usePost = () => {
               throw new Error('Maximum 20 images allowed');
             }
 
-            const imageUrls = await uploadFiles(files);
+            const imageIds = await uploadFiles(files, 'image');
             const data: MultiImagePostData = {
               text: content,
-              image_urls: imageUrls,
+              image_ids: imageIds,
               visibility,
             };
             result = await createMultiImagePost(data);
@@ -139,12 +139,17 @@ export const usePost = () => {
               throw new Error('Video file is required for video posts');
             }
 
-            const videoUrls = await uploadFiles([files[0]]);
+            const videoIds = await uploadFiles([files[0]], 'video');
+            
+            if (!videoIds[0]) {
+              throw new Error('Failed to get video ID from upload');
+            }
+            
             const title = content.split('\n')[0] || 'Video Post';
             const data: VideoPostData = {
               text: content,
               title,
-              video_url: videoUrls[0],
+              video_id: videoIds[0],
               visibility,
             };
             result = await createVideoPost(data);

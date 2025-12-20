@@ -9,16 +9,16 @@ export interface PostData {
 }
 
 export interface ImagePostData extends PostData {
-  image_url: string;
+  image_id: string;
 }
 
 export interface MultiImagePostData extends PostData {
-  image_urls: string[];
+  image_ids: string[];
 }
 
 export interface VideoPostData extends PostData {
   title: string;
-  video_url: string;
+  video_id: string;
 }
 
 // API Response Types
@@ -38,8 +38,11 @@ export interface PostResponse {
 export interface MediaUploadResponse {
   success: boolean;
   message?: string;
-  url: string;
-  media_id?: string;
+  media_id: string;
+  public_url?: string;
+  filename?: string;
+  file_size?: number;
+  media_type?: string;
   error?: string;
 }
 
