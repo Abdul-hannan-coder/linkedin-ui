@@ -13,13 +13,16 @@ export const initiateGoogleOAuth = async (
   try {
     // Get current origin for redirect_uri
     const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://linkedin-sooty-five.vercel.app';
-    const finalRedirectUri = redirectUri || '/linkedin-connect';
-    
+    const finalRedirectUri = redirectUri || '/dashboard';
+
+    // The callback page URL where backend should redirect after OAuth
+    // This callback page will handle closing the popup and notifying the parent window
+    const callbackUrl = `${currentOrigin}/auth/google/callback?redirect_uri=${encodeURIComponent(finalRedirectUri)}`;
 
     // Always use backend endpoint with redirect_uri and origin parameters
-    // This ensures the backend knows where to redirect after OAuth completes
+    // redirect_uri should point to our callback page, which will handle popup closure
     const params = new URLSearchParams();
-    params.append('redirect_uri', finalRedirectUri);
+    params.append('redirect_uri', callbackUrl);
     params.append('origin', currentOrigin);
     
     // Always use backend login endpoint with redirect_uri and origin parameters
@@ -49,10 +52,58 @@ export const initiateGoogleOAuth = async (
     // Store initial token state
     const initialToken = getToken();
     
-    // Simple popup closure detection
+    // Listen for messages from popup (callback page)
+    const handleMessage = (event: MessageEvent) => {
+      // Verify message is from same origin
+      if (event.origin !== window.location.origin) {
+        return;
+      }
+
+      if (event.data.type === 'GOOGLE_OAUTH_SUCCESS') {
+        // OAuth successful
+        clearTimeout(timeout);
+        cleanup();
+        
+        // Wait a bit for token to be set
+        setTimeout(() => {
+          // For unauthenticated users, check if token was set (login successful)
+          if (!initialToken) {
+            const newToken = getToken();
+            if (newToken) {
+              // Token was set - login successful
+              onSuccess?.();
+            } else {
+              // Token might still be setting, try again
+              setTimeout(() => {
+                const finalToken = getToken();
+                if (finalToken) {
+                  onSuccess?.();
+                } else {
+                  onError?.(new Error('Google OAuth completed but no token received'));
+                }
+              }, 1000);
+            }
+          } else {
+            // For authenticated users, just call success (account linking)
+            onSuccess?.();
+          }
+        }, 500);
+      } else if (event.data.type === 'GOOGLE_OAUTH_ERROR') {
+        // OAuth error
+        clearTimeout(timeout);
+        cleanup();
+        onError?.(new Error(event.data.error || 'Google OAuth failed'));
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    
+    // Simple popup closure detection (fallback)
     const checkPopup = setInterval(() => {
       if (popup.closed) {
-        clearInterval(checkPopup);
+        clearTimeout(timeout);
+        cleanup();
+        
         // Wait for backend to process callback
         setTimeout(() => {
           // For unauthenticated users, check if token was set (login successful)
@@ -73,13 +124,19 @@ export const initiateGoogleOAuth = async (
       }
     }, 500);
 
+    // Cleanup function
+    const cleanup = () => {
+      clearInterval(checkPopup);
+      window.removeEventListener('message', handleMessage);
+    };
+
     // Timeout after 5 minutes
-    setTimeout(() => {
+    const timeout = setTimeout(() => {
       if (!popup.closed) {
         popup.close();
-        clearInterval(checkPopup);
-        onError?.(new Error('OAuth flow timed out'));
       }
+      cleanup();
+      onError?.(new Error('OAuth flow timed out'));
     }, 5 * 60 * 1000);
 
   } catch (error) {
