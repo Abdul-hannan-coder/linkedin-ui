@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useSearchParams } from "next/navigation";
 import { 
   FileText, 
   Image as ImageIcon, 
@@ -28,15 +29,19 @@ import { Textarea } from "@/components/ui/input";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { usePost, PostType, Visibility } from "@/hooks/posts";
+import { createImagePost, createVideoPost } from "@/hooks/posts/api";
 import { useLinkedInProfile } from "@/hooks/linkedin";
 import { useAuth } from "@/hooks/auth";
 
 export default function PostPage() {
+  const searchParams = useSearchParams();
   const [postType, setPostType] = useState<PostType>("text");
   const [content, setContent] = useState("");
   const [visibility, setVisibility] = useState<Visibility>("public");
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [storedFiles, setStoredFiles] = useState<File[]>([]);
+  const [preSelectedMediaId, setPreSelectedMediaId] = useState<string | null>(null);
+  const [preSelectedMediaType, setPreSelectedMediaType] = useState<'image' | 'video' | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { createPost, isPosting, isUploading, error, success, clearError, resetPost } = usePost();
   const { profile, fetchProfile } = useLinkedInProfile();
@@ -46,6 +51,32 @@ export default function PostPage() {
   useEffect(() => {
     fetchProfile();
   }, [fetchProfile]);
+
+  // Handle pre-selected media from storage page
+  useEffect(() => {
+    const mediaId = searchParams.get('media_id');
+    const mediaType = searchParams.get('media_type');
+    const mediaUrl = searchParams.get('media_url');
+
+    if (mediaId && mediaType && mediaUrl) {
+      // Set pre-selected media
+      setPreSelectedMediaId(mediaId);
+      setPreSelectedMediaType(mediaType as 'image' | 'video');
+      
+      // Set post type based on media type
+      if (mediaType === 'image') {
+        setPostType('image');
+      } else if (mediaType === 'video') {
+        setPostType('video');
+      }
+      
+      // Set preview URL
+      setPreviewUrls([mediaUrl]);
+      
+      // Clear URL params to avoid re-triggering
+      window.history.replaceState({}, '', '/dashboard/post');
+    }
+  }, [searchParams]);
 
   // Get display name and avatar
   const displayName = profile?.name || user?.full_name || 'User';
@@ -81,8 +112,16 @@ export default function PostPage() {
   };
 
   const removeFile = (index: number) => {
-    // Revoke object URL to free memory
-    URL.revokeObjectURL(previewUrls[index]);
+    // Revoke object URL to free memory (only for blob URLs)
+    if (previewUrls[index]?.startsWith('blob:')) {
+      URL.revokeObjectURL(previewUrls[index]);
+    }
+    
+    // If removing pre-selected media, clear the state
+    if (index === 0 && preSelectedMediaId && previewUrls.length === 1) {
+      setPreSelectedMediaId(null);
+      setPreSelectedMediaType(null);
+    }
     
     setPreviewUrls(prev => prev.filter((_, i) => i !== index));
     setStoredFiles(prev => prev.filter((_, i) => i !== index));
@@ -92,28 +131,55 @@ export default function PostPage() {
     // Clear any previous errors
     clearError();
     
-    // Validate content
-    if (!content.trim()) {
+    // Validate content (allow empty if using pre-selected media)
+    if (!content.trim() && !preSelectedMediaId) {
       return;
     }
 
-    // Validate files based on post type
-    if (postType !== "text" && storedFiles.length === 0) {
-      return;
-    }
+    // Validate files based on post type (unless using pre-selected media)
+    if (!preSelectedMediaId) {
+      if (postType !== "text" && storedFiles.length === 0) {
+        return;
+      }
 
-    if (postType === "multiple" && storedFiles.length < 2) {
-      return;
+      if (postType === "multiple" && storedFiles.length < 2) {
+        return;
+      }
     }
 
     try {
-      const result = await createPost(postType, content, storedFiles, visibility);
+      let result;
+      
+      // If using pre-selected media, use media_id directly
+      if (preSelectedMediaId && preSelectedMediaType) {
+        if (preSelectedMediaType === 'image') {
+          result = await createImagePost({
+            image_id: preSelectedMediaId,
+            text: content.trim() || '',
+            visibility,
+          });
+        } else if (preSelectedMediaType === 'video') {
+          result = await createVideoPost({
+            video_id: preSelectedMediaId,
+            text: content.trim() || '',
+            title: content.split('\n')[0] || 'Video Post',
+            visibility,
+          });
+        } else {
+          throw new Error('Invalid media type');
+        }
+      } else {
+        // Use normal flow with file upload
+        result = await createPost(postType, content, storedFiles, visibility);
+      }
       
       if (result.success) {
         // Reset form on success
         setContent('');
         setPreviewUrls([]);
         setStoredFiles([]);
+        setPreSelectedMediaId(null);
+        setPreSelectedMediaType(null);
         
         // Reset post state after a delay
         setTimeout(() => {
@@ -121,17 +187,23 @@ export default function PostPage() {
         }, 3000);
       }
     } catch (error) {
-      // Error is handled by the hook
+      // Error is handled by usePost hook or shown directly
       console.error('Failed to create post:', error);
     }
   };
 
   const handlePostTypeChange = (newType: PostType) => {
     setPostType(newType);
-    // Clear files when changing post type
-    previewUrls.forEach(url => URL.revokeObjectURL(url));
+    // Clear files and pre-selected media when changing post type
+    previewUrls.forEach(url => {
+      if (url.startsWith('blob:')) {
+        URL.revokeObjectURL(url);
+      }
+    });
     setPreviewUrls([]);
     setStoredFiles([]);
+    setPreSelectedMediaId(null);
+    setPreSelectedMediaType(null);
   };
 
   const postTypes = [
@@ -290,7 +362,7 @@ export default function PostPage() {
               
               <Button 
                 onClick={handleSubmit}
-                disabled={isPosting || isUploading || !content.trim() || (postType !== "text" && storedFiles.length === 0)}
+                disabled={isPosting || isUploading || (!content.trim() && !preSelectedMediaId) || (postType !== "text" && storedFiles.length === 0 && !preSelectedMediaId)}
                 className="w-full h-14 rounded-2xl text-base font-black gap-3 shadow-xl shadow-primary/20 px-10 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isPosting || isUploading ? (

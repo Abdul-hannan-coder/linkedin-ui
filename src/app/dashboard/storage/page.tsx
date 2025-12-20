@@ -236,7 +236,14 @@ export default function StoragePage() {
                   {/* Action Buttons */}
                   <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex gap-2">
                     <Button 
-                      onClick={() => router.push("/dashboard/post")}
+                      onClick={() => {
+                        const params = new URLSearchParams({
+                          media_id: item.media_id,
+                          media_type: item.media_type,
+                          media_url: item.public_url,
+                        });
+                        router.push(`/dashboard/post?${params.toString()}`);
+                      }}
                       size="sm" 
                       className="h-8 rounded-lg bg-primary gap-2 text-[10px] font-black shadow-lg"
                     >
