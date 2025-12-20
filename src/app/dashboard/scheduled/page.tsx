@@ -497,7 +497,10 @@ export default function ScheduledPage() {
                         <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 ml-1">Media</h3>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <button 
-                            onClick={() => setIsMediaModalOpen(true)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setIsMediaModalOpen(true);
+                            }}
                             className="flex items-center gap-4 h-32 px-6 rounded-[2rem] border-2 border-dashed border-slate-200 bg-slate-50 text-slate-500 font-bold hover:border-primary/50 hover:bg-primary/5 transition-all group"
                           >
                             <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center border border-slate-100 shadow-sm">
