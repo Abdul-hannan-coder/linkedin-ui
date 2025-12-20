@@ -449,7 +449,7 @@ export default function PostPage() {
                        )}>
                           {previewUrls.slice(0, 4).map((url, i) => (
                             <div key={i} className="aspect-square relative overflow-hidden group first:rounded-tl-xl last:rounded-br-xl even:rounded-tr-xl odd:rounded-bl-xl">
-                              <Image src={url} alt="" fill className="object-cover rounded-lg" />
+                              <Image src={url} alt="" fill className="object-cover rounded-lg" unoptimized />
                               <button 
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -469,7 +469,7 @@ export default function PostPage() {
                        </div>
                      ) : (
                        <div className="aspect-video relative bg-slate-50 group border-y border-slate-100">
-                         <Image src={previewUrls[0]} alt="" fill className="object-cover" />
+                         <Image src={previewUrls[0]} alt="" fill className="object-cover" unoptimized />
                          <button 
                             onClick={(e) => {
                               e.stopPropagation();
