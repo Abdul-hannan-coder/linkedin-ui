@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { 
   User, 
@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
+import { useAuth } from "@/hooks/auth";
 
 const menuItems = [
   {
@@ -40,7 +41,22 @@ const menuItems = [
 
 export const DashboardSidebar = () => {
   const pathname = usePathname();
+  const router = useRouter();
+  const { logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
+
+  const handleLogout = () => {
+    // Clear all localStorage data
+    if (typeof window !== 'undefined') {
+      localStorage.clear();
+    }
+    
+    // Call logout from auth hook
+    logout();
+    
+    // Redirect to login page immediately
+    router.replace('/login');
+  };
 
   return (
     <>
@@ -109,7 +125,7 @@ export const DashboardSidebar = () => {
 
         <div className="pt-5 border-t border-slate-100">
           <button 
-            onClick={() => window.location.href = "/login"}
+            onClick={handleLogout}
             className="w-full flex items-center gap-3.5 px-4 py-3.5 rounded-xl text-red-500 hover:bg-red-50 transition-colors group"
           >
             <LogOut className="w-5 h-5 group-hover:translate-x-1 transition-transform" />

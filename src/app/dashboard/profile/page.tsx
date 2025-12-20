@@ -149,14 +149,6 @@ export default function ProfilePage() {
               )}
             </div>
           </div>
-          {profile?.linkedin_user_id && (
-            <div className="space-y-2 md:space-y-4 sm:col-span-2">
-              <label className="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-widest ml-1">LinkedIn User ID</label>
-              <div className="h-12 md:h-16 bg-slate-50 rounded-xl md:rounded-2xl border border-slate-100 flex items-center px-4 md:px-6 text-base md:text-xl font-bold text-slate-900">
-                {profile.linkedin_user_id}
-              </div>
-            </div>
-          )}
         </div>
       </motion.div>
     </div>
