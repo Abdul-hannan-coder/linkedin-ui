@@ -11,16 +11,28 @@ export const initiateGoogleOAuth = async (
 ): Promise<void> => {
   try {
     const token = getToken();
-    if (!token) {
-      throw new Error('User must be logged in to link Google account');
-    }
+    let authUrl: string;
 
-    // Get OAuth URL from backend (not hardcoded)
-    const debug = await getGoogleOAuthDebug();
-    const authUrl = debug.generated_auth_url;
-
-    if (!authUrl) {
-      throw new Error('Failed to get Google OAuth URL from backend');
+    if (token) {
+      // User is authenticated - get OAuth URL from backend (for linking account)
+      try {
+        const debug = await getGoogleOAuthDebug();
+        authUrl = debug.generated_auth_url;
+        
+        if (!authUrl) {
+          throw new Error('Failed to get Google OAuth URL from backend');
+        }
+      } catch {
+        throw new Error('Failed to get Google OAuth URL from backend');
+      }
+    } else {
+      // User is not authenticated - construct OAuth URL directly (for login/signup)
+      // Using known Google OAuth configuration
+      const clientId = '132195997917-ehh86lrhph7ps16enls8096abjr4kr55.apps.googleusercontent.com';
+      const redirectUri = encodeURIComponent('https://backend.postsiva.com/auth/google/callback');
+      const scope = encodeURIComponent('openid email profile');
+      
+      authUrl = `https://accounts.google.com/o/oauth2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&scope=${scope}&response_type=code&access_type=offline&prompt=consent`;
     }
 
     // Open popup window
@@ -39,13 +51,29 @@ export const initiateGoogleOAuth = async (
       throw new Error('Popup blocked. Please allow popups for this site.');
     }
 
+    // Store initial token state
+    const initialToken = getToken();
+    
     // Simple popup closure detection
     const checkPopup = setInterval(() => {
       if (popup.closed) {
         clearInterval(checkPopup);
         // Wait for backend to process callback
         setTimeout(() => {
-          onSuccess?.();
+          // For unauthenticated users, check if token was set (login successful)
+          if (!initialToken) {
+            const newToken = getToken();
+            if (newToken) {
+              // Token was set - login successful
+              onSuccess?.();
+            } else {
+              // No token - user might have cancelled
+              onError?.(new Error('Google OAuth was cancelled or failed'));
+            }
+          } else {
+            // For authenticated users, just call success (account linking)
+            onSuccess?.();
+          }
         }, 1500);
       }
     }, 500);
