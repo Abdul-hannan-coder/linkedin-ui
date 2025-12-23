@@ -287,33 +287,14 @@ export default function StoragePage() {
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }}
                 key={item.media_id}
+                onClick={() => handleToggleSelect(item.media_id)}
                 className={cn(
-                  "bg-white rounded-[2rem] border shadow-xl shadow-primary/5 overflow-hidden group flex flex-col h-full transition-all",
+                  "bg-white rounded-[2rem] border shadow-xl shadow-primary/5 overflow-hidden group flex flex-col h-full transition-all cursor-pointer",
                   selectedItems.has(item.media_id) 
                     ? "border-primary border-2 ring-2 ring-primary/20" 
-                    : "border-slate-100"
+                    : "border-slate-100 hover:border-primary/30"
                 )}
               >
-                {/* Selection Checkbox */}
-                <div className="absolute top-4 left-4 z-10">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleToggleSelect(item.media_id);
-                    }}
-                    className={cn(
-                      "w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all",
-                      selectedItems.has(item.media_id)
-                        ? "bg-primary border-primary text-white"
-                        : "bg-white/90 backdrop-blur-sm border-slate-300 hover:border-primary"
-                    )}
-                  >
-                    {selectedItems.has(item.media_id) && (
-                      <CheckSquare className="w-4 h-4" />
-                    )}
-                  </button>
-                </div>
-
                 {/* Media Preview */}
                 <div className="relative aspect-[4/3] bg-slate-50 overflow-hidden">
                   {item.media_type === "video" ? (
@@ -351,9 +332,10 @@ export default function StoragePage() {
                   </div>
 
                   {/* Action Buttons */}
-                  <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex gap-2">
+                  <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex gap-2 z-10">
                     <Button 
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         const params = new URLSearchParams({
                           media_id: item.media_id,
                           media_type: item.media_type,
@@ -368,7 +350,10 @@ export default function StoragePage() {
                       Use
                     </Button>
                     <Button 
-                      onClick={(e) => handleDelete(item.media_id, e)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(item.media_id, e);
+                      }}
                       size="sm" 
                       className="h-8 rounded-lg gap-2 text-[10px] font-black shadow-lg bg-red-500 hover:bg-red-600 text-white"
                     >
@@ -380,7 +365,19 @@ export default function StoragePage() {
                 {/* Media Info */}
                 <div className="p-5 flex-1 flex flex-col justify-between">
                   <div>
-                    <h3 className="text-xs font-black text-slate-900 truncate mb-1">{item.filename}</h3>
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className={cn(
+                        "w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all",
+                        selectedItems.has(item.media_id)
+                          ? "bg-primary border-primary text-white"
+                          : "bg-white border-slate-300"
+                      )}>
+                        {selectedItems.has(item.media_id) && (
+                          <CheckSquare className="w-3 h-3 fill-current" />
+                        )}
+                      </div>
+                      <h3 className="text-xs font-black text-slate-900 truncate flex-1">{item.filename}</h3>
+                    </div>
                     <div className="flex items-center justify-between text-[10px] font-bold text-slate-400 mb-4 uppercase tracking-wider">
                       <span>{formatFileSize(item.file_size)}</span>
                       <span>{formatDate(item.uploaded_at)}</span>
