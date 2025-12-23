@@ -13,8 +13,8 @@ import {
   Loader2,
   AlertCircle,
   X,
-  CheckSquare,
-  Square
+  Square,
+  Check
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
@@ -233,7 +233,10 @@ export default function StoragePage() {
               >
                 {selectedItems.size === media.length ? (
                   <>
-                    <CheckSquare className="w-5 h-5" />
+                    <div className="relative">
+                      <Square className="w-5 h-5" />
+                      <Check className="w-3 h-3 absolute top-0.5 left-0.5" strokeWidth={3} />
+                    </div>
                     Deselect All
                   </>
                 ) : (
@@ -365,19 +368,7 @@ export default function StoragePage() {
                 {/* Media Info */}
                 <div className="p-5 flex-1 flex flex-col justify-between">
                   <div>
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className={cn(
-                        "w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all",
-                        selectedItems.has(item.media_id)
-                          ? "bg-primary border-primary text-white"
-                          : "bg-white border-slate-300"
-                      )}>
-                        {selectedItems.has(item.media_id) && (
-                          <CheckSquare className="w-3 h-3 fill-current" />
-                        )}
-                      </div>
-                      <h3 className="text-xs font-black text-slate-900 truncate flex-1">{item.filename}</h3>
-                    </div>
+                    <h3 className="text-xs font-black text-slate-900 truncate mb-1">{item.filename}</h3>
                     <div className="flex items-center justify-between text-[10px] font-bold text-slate-400 mb-4 uppercase tracking-wider">
                       <span>{formatFileSize(item.file_size)}</span>
                       <span>{formatDate(item.uploaded_at)}</span>
