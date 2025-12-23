@@ -35,24 +35,53 @@ export default function LinkedInConnectPage() {
   useEffect(() => {
     if (!authLoading && isAuthenticated && !checkedRef.current) {
       checkedRef.current = true;
-      checkConnection();
+      // Small delay to ensure auth state is fully settled
+      const timer = setTimeout(() => {
+        checkConnection();
+      }, 100);
+      return () => clearTimeout(timer);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, authLoading]); // checkConnection is stable, safe to omit
 
   // Redirect to dashboard if already connected (with guards)
   useEffect(() => {
+    // Don't redirect if already redirecting or auth is loading
     if (redirectingRef.current || authLoading) return;
     
-    if (isConnected && !isLoading) {
+    // If connected (regardless of loading state), redirect to dashboard
+    // The loading state might be true during the check, but if isConnected is true,
+    // it means we have a valid connection and should redirect
+    if (isConnected) {
+      // Prevent multiple redirects
+      if (redirectingRef.current) return;
       redirectingRef.current = true;
-      // Small delay to show success state
+      
+      // Small delay to show success state, then redirect
       const timer = setTimeout(() => {
-        router.replace("/dashboard/profile");
-      }, 2000);
-      return () => clearTimeout(timer);
+        try {
+          router.replace("/dashboard/profile");
+        } catch (error) {
+          console.error("Redirect error:", error);
+          // Fallback: use window.location if router fails
+          window.location.href = "/dashboard/profile";
+        }
+      }, 1500);
+      
+      // Fallback: Force redirect after 5 seconds if router.replace doesn't work
+      const fallbackTimer = setTimeout(() => {
+        if (window.location.pathname === "/linkedin-connect") {
+          console.warn("Redirect timeout, forcing navigation");
+          window.location.href = "/dashboard/profile";
+        }
+      }, 5000);
+      
+      return () => {
+        clearTimeout(timer);
+        clearTimeout(fallbackTimer);
+      };
     }
-  }, [isConnected, isLoading, authLoading, router]);
+  }, [isConnected, authLoading, router]);
 
   const handleConnect = async () => {
     setIsConnecting(true);
