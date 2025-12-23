@@ -197,22 +197,19 @@ export default function StoragePage() {
                 {/* Media Preview */}
                 <div className="relative aspect-[4/3] bg-slate-50 overflow-hidden">
                   {item.media_type === "video" ? (
-                    <div className="w-full h-full flex flex-col">
-                      <div className="flex-1 relative bg-black flex items-center justify-center">
-                        <Image 
-                          src={item.public_url} 
-                          alt={item.filename} 
-                          fill 
-                          className="object-cover opacity-50" 
-                          unoptimized
-                        />
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <div className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white border border-white/30">
-                            <VideoIcon className="w-6 h-6 fill-current" />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                    <video
+                      src={item.public_url}
+                      className="w-full h-full object-cover"
+                      controls
+                      preload="metadata"
+                      playsInline
+                      onMouseEnter={(e) => {
+                        // Optional: Show controls on hover
+                        e.currentTarget.controls = true;
+                      }}
+                    >
+                      Your browser does not support the video tag.
+                    </video>
                   ) : (
                     <Image 
                       src={item.public_url} 
