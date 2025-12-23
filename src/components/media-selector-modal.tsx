@@ -129,20 +129,19 @@ export function MediaSelectorModal({ isOpen, onClose, onSelect, filter: filterPr
                     className="group relative aspect-square rounded-2xl overflow-hidden bg-slate-100 border-2 border-transparent hover:border-primary transition-all cursor-pointer"
                   >
                     {item.media_type === "video" ? (
-                      <div className="w-full h-full relative bg-black flex items-center justify-center">
-                        <Image
-                          src={item.public_url}
-                          alt={item.filename}
-                          fill
-                          className="object-cover opacity-50"
-                          unoptimized
-                        />
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <div className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white border border-white/30">
-                            <VideoIcon className="w-6 h-6 fill-current" />
-                          </div>
-                        </div>
-                      </div>
+                      <video
+                        src={item.public_url}
+                        className="w-full h-full object-cover"
+                        controls
+                        preload="metadata"
+                        playsInline
+                        onClick={(e) => e.stopPropagation()}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.controls = true;
+                        }}
+                      >
+                        Your browser does not support the video tag.
+                      </video>
                     ) : (
                       <Image
                         src={item.public_url}
