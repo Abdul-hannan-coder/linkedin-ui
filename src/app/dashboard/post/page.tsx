@@ -239,7 +239,38 @@ export default function PostPage() {
   ];
 
   return (
-    <div className="p-4 md:p-8 max-w-[1200px] mx-auto min-h-screen">
+    <div className="p-4 md:p-8 max-w-[1200px] mx-auto min-h-screen relative">
+      {/* Loading Overlay */}
+      <AnimatePresence>
+        {(isPosting || isUploading) && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-3xl shadow-2xl p-8 md:p-12 max-w-md w-full mx-4 text-center"
+            >
+              <div className="w-16 h-16 mx-auto mb-6 bg-primary/10 rounded-full flex items-center justify-center">
+                <Loader2 className="w-8 h-8 text-primary animate-spin" />
+              </div>
+              <h2 className="text-2xl font-black text-slate-900 mb-2">
+                {isUploading ? "Uploading Media..." : "Posting to LinkedIn..."}
+              </h2>
+              <p className="text-slate-600 font-bold">
+                {isUploading 
+                  ? "Please wait while we upload your media files" 
+                  : "Your post is being published. This may take a few moments."}
+              </p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="mb-6 md:mb-8">
         <h1 className="text-2xl md:text-3xl font-black text-slate-900 mb-1">Create Post</h1>
         <p className="text-xs md:text-sm text-slate-500 font-bold">Create and publish a new LinkedIn post</p>

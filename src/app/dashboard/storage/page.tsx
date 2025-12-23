@@ -12,7 +12,9 @@ import {
   Trash2,
   Loader2,
   AlertCircle,
-  X
+  X,
+  CheckSquare,
+  Square
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
@@ -22,6 +24,8 @@ import { useStorage, MediaFilter } from "@/hooks/storage";
 
 export default function StoragePage() {
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
+  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  const [isDeleting, setIsDeleting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
@@ -35,6 +39,7 @@ export default function StoragePage() {
     setFilter,
     uploadFile,
     deleteMediaItem,
+    bulkDelete,
     clearError,
     loadMore,
   } = useStorage();
@@ -61,6 +66,43 @@ export default function StoragePage() {
         await deleteMediaItem(mediaId);
       } catch {
         // Error is handled by the hook
+      }
+    }
+  };
+
+  const handleToggleSelect = (mediaId: string) => {
+    setSelectedItems((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(mediaId)) {
+        newSet.delete(mediaId);
+      } else {
+        newSet.add(mediaId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (selectedItems.size === media.length) {
+      setSelectedItems(new Set());
+    } else {
+      setSelectedItems(new Set(media.map((item) => item.media_id)));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedItems.size === 0) return;
+    
+    const count = selectedItems.size;
+    if (confirm(`Are you sure you want to delete ${count} item${count > 1 ? 's' : ''}?`)) {
+      setIsDeleting(true);
+      try {
+        await bulkDelete(Array.from(selectedItems));
+        setSelectedItems(new Set());
+      } catch {
+        // Error is handled by the hook
+      } finally {
+        setIsDeleting(false);
       }
     }
   };
@@ -108,10 +150,41 @@ export default function StoragePage() {
           <h1 className="text-3xl md:text-4xl font-black text-slate-900 mb-2 tracking-tight">Storage</h1>
           <p className="text-sm md:text-base text-slate-500 font-bold">
             Showing {media.length} of {pagination.total} media items
+            {selectedItems.size > 0 && (
+              <span className="ml-2 text-primary">• {selectedItems.size} selected</span>
+            )}
           </p>
         </div>
         
         <div className="flex items-center gap-3">
+          {selectedItems.size > 0 && (
+            <>
+              <Button
+                onClick={handleBulkDelete}
+                disabled={isDeleting}
+                className="h-12 px-6 rounded-xl gap-2 font-bold bg-red-500 hover:bg-red-600 text-white"
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    Delete Selected ({selectedItems.size})
+                  </>
+                )}
+              </Button>
+              <Button
+                onClick={() => setSelectedItems(new Set())}
+                variant="outline"
+                className="h-12 px-4 rounded-xl font-bold"
+              >
+                Clear
+              </Button>
+            </>
+          )}
           <div className="relative">
             <button 
               onClick={() => setShowFilterDropdown(!showFilterDropdown)}
@@ -136,6 +209,7 @@ export default function StoragePage() {
                       onClick={() => {
                         setFilter(type);
                         setShowFilterDropdown(false);
+                        setSelectedItems(new Set()); // Clear selection when filter changes
                       }}
                       className={cn(
                         "w-full px-5 py-3 text-left font-bold text-sm transition-colors",
@@ -150,18 +224,39 @@ export default function StoragePage() {
             </AnimatePresence>
           </div>
 
-          <Button 
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isUploading}
-            className="h-12 px-8 rounded-xl gap-3 font-black shadow-xl shadow-primary/20"
-          >
-            {isUploading ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
-            ) : (
-              <Upload className="w-5 h-5" />
+          <div className="flex items-center gap-3">
+            {media.length > 0 && (
+              <Button
+                onClick={handleSelectAll}
+                variant="outline"
+                className="h-12 px-6 rounded-xl gap-2 font-bold border-slate-200"
+              >
+                {selectedItems.size === media.length ? (
+                  <>
+                    <CheckSquare className="w-5 h-5" />
+                    Deselect All
+                  </>
+                ) : (
+                  <>
+                    <Square className="w-5 h-5" />
+                    Select All
+                  </>
+                )}
+              </Button>
             )}
-            {isUploading ? "Uploading..." : "Upload"}
-          </Button>
+            <Button 
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading}
+              className="h-12 px-8 rounded-xl gap-3 font-black shadow-xl shadow-primary/20"
+            >
+              {isUploading ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <Upload className="w-5 h-5" />
+              )}
+              {isUploading ? "Uploading..." : "Upload"}
+            </Button>
+          </div>
           
           <input
             ref={fileInputRef}
@@ -192,8 +287,33 @@ export default function StoragePage() {
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }}
                 key={item.media_id}
-                className="bg-white rounded-[2rem] border border-slate-100 shadow-xl shadow-primary/5 overflow-hidden group flex flex-col h-full"
+                className={cn(
+                  "bg-white rounded-[2rem] border shadow-xl shadow-primary/5 overflow-hidden group flex flex-col h-full transition-all",
+                  selectedItems.has(item.media_id) 
+                    ? "border-primary border-2 ring-2 ring-primary/20" 
+                    : "border-slate-100"
+                )}
               >
+                {/* Selection Checkbox */}
+                <div className="absolute top-4 left-4 z-10">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleToggleSelect(item.media_id);
+                    }}
+                    className={cn(
+                      "w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all",
+                      selectedItems.has(item.media_id)
+                        ? "bg-primary border-primary text-white"
+                        : "bg-white/90 backdrop-blur-sm border-slate-300 hover:border-primary"
+                    )}
+                  >
+                    {selectedItems.has(item.media_id) && (
+                      <CheckSquare className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
+
                 {/* Media Preview */}
                 <div className="relative aspect-[4/3] bg-slate-50 overflow-hidden">
                   {item.media_type === "video" ? (
