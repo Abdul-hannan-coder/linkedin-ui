@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useReducer, useCallback, useEffect, useState, useMemo, useRef } from 'react';
+import { useReducer, useCallback, useEffect, useMemo, useRef } from 'react';
 import { authReducer, initialState } from './reducer';
 import { login, signup, getCurrentUser, logout as logoutApi, getToken } from './api';
 import { LoginRequest, SignupRequest } from './types';
@@ -144,7 +144,7 @@ export const useAuth = () => {
    * This redirects to the backend OAuth endpoint, which handles the full flow
    * The token will be in the URL when the user is redirected back
    */
-  const loginWithGoogle = useCallback((redirectUri?: string) => {
+  const loginWithGoogle = useCallback(async (redirectUri?: string): Promise<void> => {
     dispatch({ type: 'AUTH_RESET_ERROR' });
     // Simply redirect - backend handles the OAuth flow
     // Token will be extracted from URL when user returns

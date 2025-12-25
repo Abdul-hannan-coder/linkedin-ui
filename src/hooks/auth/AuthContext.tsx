@@ -17,7 +17,7 @@ interface AuthContextType {
   logout: () => void;
   refreshUser: () => Promise<{ success: boolean; data?: User; error?: string }>;
   clearError: () => void;
-  loginWithGoogle: () => Promise<void>;
+  loginWithGoogle: (redirectUri?: string) => Promise<void>;
   isGoogleOAuthLoading: boolean;
 }
 
