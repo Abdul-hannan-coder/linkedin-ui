@@ -121,6 +121,11 @@ export const getToken = (): string | null => {
   return getAuthToken();
 };
 
+/**
+ * Set auth token in localStorage
+ */
+export { setAuthToken };
+
 // Export token management functions
 export const authTokenUtils = {
   get: getAuthToken,

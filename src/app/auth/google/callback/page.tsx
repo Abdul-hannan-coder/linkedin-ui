@@ -1,137 +1,41 @@
 "use client";
 
 import { useEffect, useState, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Loader2, CheckCircle2, XCircle } from "lucide-react";
 import { motion } from "framer-motion";
+import { extractGoogleOAuthTokenFromUrl } from "@/hooks/auth/googleOAuth";
 
 function GoogleAuthCallbackContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [message, setMessage] = useState("Processing Google authentication...");
 
   useEffect(() => {
-    // Check if we're in a popup window
-    const isPopup = window.opener !== null;
+    // According to the documented flow, backend redirects to frontend with:
+    // ?token={JWT}&user={username}&email={email}&success=true
+    
+    const result = extractGoogleOAuthTokenFromUrl();
 
-    // Get redirect_uri from URL params or default to /dashboard
-    const redirectUri = searchParams.get("redirect_uri") || "/dashboard";
-    const error = searchParams.get("error");
-    const code = searchParams.get("code");
-
-    if (error) {
-      // OAuth error
-      setStatus("error");
-      setMessage("Authentication failed. Please try again.");
-      
-      if (isPopup) {
-        // Notify parent window of error
-        window.opener?.postMessage(
-          { type: "GOOGLE_OAUTH_ERROR", error },
-          window.location.origin
-        );
-        // Close popup after a delay
-        setTimeout(() => {
-          window.close();
-        }, 2000);
-      } else {
-        // Not in popup, redirect to login
-        setTimeout(() => {
-          router.replace("/login");
-        }, 2000);
-      }
-      return;
-    }
-
-    if (code) {
-      // OAuth code received - backend should have processed it
+    if (result.success && result.token) {
       setStatus("success");
       setMessage("Authentication successful! Redirecting...");
 
-      if (isPopup) {
-        // We're in a popup - notify parent window
-        window.opener?.postMessage(
-          { type: "GOOGLE_OAUTH_SUCCESS", code },
-          window.location.origin
-        );
-        
-        // Close popup after short delay
-        setTimeout(() => {
-          window.close();
-        }, 1000);
-      } else {
-        // Not in popup - redirect directly
-        setTimeout(() => {
-          router.replace(redirectUri);
-        }, 1500);
-      }
+      // According to the documented flow, backend redirects directly to redirect_path
+      // But if we're on the callback page, redirect to dashboard
+      setTimeout(() => {
+        router.replace("/dashboard");
+      }, 1500);
     } else {
-      // No code or error - might still be processing
-      // Check if token exists in localStorage (backend might have set it)
-      const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
-      
-      if (token) {
-        setStatus("success");
-        setMessage("Authentication successful! Redirecting...");
-        
-        if (isPopup) {
-          window.opener?.postMessage(
-            { type: "GOOGLE_OAUTH_SUCCESS" },
-            window.location.origin
-          );
-          setTimeout(() => {
-            window.close();
-          }, 1000);
-        } else {
-          setTimeout(() => {
-            router.replace(redirectUri);
-          }, 1500);
-        }
-      } else {
-        // Wait a bit more for backend to process
-        setTimeout(() => {
-          const finalToken = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
-          if (finalToken) {
-            setStatus("success");
-            setMessage("Authentication successful! Redirecting...");
-            
-            if (isPopup) {
-              window.opener?.postMessage(
-                { type: "GOOGLE_OAUTH_SUCCESS" },
-                window.location.origin
-              );
-              setTimeout(() => {
-                window.close();
-              }, 1000);
-            } else {
-              setTimeout(() => {
-                router.replace(redirectUri);
-              }, 1500);
-            }
-          } else {
-            // Still no token - might be an error
-            setStatus("error");
-            setMessage("Authentication failed. Please try again.");
-            
-            if (isPopup) {
-              window.opener?.postMessage(
-                { type: "GOOGLE_OAUTH_ERROR", error: "No token received" },
-                window.location.origin
-              );
-              setTimeout(() => {
-                window.close();
-              }, 2000);
-            } else {
-              setTimeout(() => {
-                router.replace("/login");
-              }, 2000);
-            }
-          }
-        }, 2000);
-      }
+      // Error case - backend should have redirected with error parameter if there was an issue
+      setStatus("error");
+      setMessage("Authentication failed. Please try again.");
+
+      setTimeout(() => {
+        router.replace("/login");
+      }, 2000);
     }
-  }, [router, searchParams]);
+  }, [router]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-white to-primary/5 flex items-center justify-center p-4">

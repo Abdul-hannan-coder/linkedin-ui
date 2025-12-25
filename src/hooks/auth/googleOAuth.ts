@@ -1,157 +1,82 @@
-// Google OAuth Popup Handler
+// Google OAuth Handler
 
-import { getToken } from './api';
+import { setAuthToken } from './api';
 
 /**
- * Open Google OAuth popup and handle callback
+ * Initiate Google OAuth login flow
+ * 
+ * According to the backend flow:
+ * - redirect_uri should be a PATH (e.g., "/dashboard"), not a full URL
+ * - origin should be the frontend domain (e.g., "https://myapp.com")
+ * - Backend will redirect to Google, then back to callback, then to frontend with token in URL
+ * 
+ * @param redirectUri - Path where user should land after login (e.g., "/dashboard")
  */
-export const initiateGoogleOAuth = async (
-  onSuccess?: () => void,
-  onError?: (error: Error) => void,
-  redirectUri?: string
-): Promise<void> => {
-  try {
-    // Get current origin for redirect_uri
-    const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://linkedin-sooty-five.vercel.app';
-    const finalRedirectUri = redirectUri || '/dashboard';
-
-    // The callback page URL where backend should redirect after OAuth
-    // This callback page will handle closing the popup and notifying the parent window
-    const callbackUrl = `${currentOrigin}/auth/google/callback?redirect_uri=${encodeURIComponent(finalRedirectUri)}`;
-
-    // Always use backend endpoint with redirect_uri and origin parameters
-    // redirect_uri should point to our callback page, which will handle popup closure
-    const params = new URLSearchParams();
-    params.append('redirect_uri', callbackUrl);
-    params.append('origin', currentOrigin);
-    
-    // Always use backend login endpoint with redirect_uri and origin parameters
-    // This ensures the backend knows where to redirect after OAuth completes
-    const authUrl = `https://backend.postsiva.com/auth/google/login?${params.toString()}`;
-
-
-
-
-    
-    // Open popup window
-    const width = 500;
-    const height = 600;
-    const left = (window.screen.width - width) / 2;
-    const top = (window.screen.height - height) / 2;
-
-    const popup = window.open(
-      authUrl,
-      'google-oauth',
-      `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no,scrollbars=yes,resizable=yes,location=yes,status=yes`
-    );
-
-    if (!popup) {
-      throw new Error('Popup blocked. Please allow popups for this site.');
-    }
-
-    // Store initial token state
-    const initialToken = getToken();
-    
-    // Listen for messages from popup (callback page)
-    const handleMessage = (event: MessageEvent) => {
-      // Verify message is from same origin
-      if (event.origin !== window.location.origin) {
-        return;
-      }
-
-      if (event.data.type === 'GOOGLE_OAUTH_SUCCESS') {
-        // OAuth successful
-        clearTimeout(timeout);
-        cleanup();
-        
-        // Wait a bit for token to be set
-        setTimeout(() => {
-          // For unauthenticated users, check if token was set (login successful)
-          if (!initialToken) {
-            const newToken = getToken();
-            if (newToken) {
-              // Token was set - login successful
-              onSuccess?.();
-            } else {
-              // Token might still be setting, try again
-              setTimeout(() => {
-                const finalToken = getToken();
-                if (finalToken) {
-                  onSuccess?.();
-                } else {
-                  onError?.(new Error('Google OAuth completed but no token received'));
-                }
-              }, 1000);
-            }
-          } else {
-            // For authenticated users, just call success (account linking)
-            onSuccess?.();
-          }
-        }, 500);
-      } else if (event.data.type === 'GOOGLE_OAUTH_ERROR') {
-        // OAuth error
-        clearTimeout(timeout);
-        cleanup();
-        onError?.(new Error(event.data.error || 'Google OAuth failed'));
-      }
-    };
-
-    window.addEventListener('message', handleMessage);
-    
-    // Simple popup closure detection (fallback)
-    const checkPopup = setInterval(() => {
-      if (popup.closed) {
-        clearTimeout(timeout);
-        cleanup();
-        
-        // Wait for backend to process callback
-        setTimeout(() => {
-          // For unauthenticated users, check if token was set (login successful)
-          if (!initialToken) {
-            const newToken = getToken();
-            if (newToken) {
-              // Token was set - login successful
-              onSuccess?.();
-            } else {
-              // No token - user might have cancelled
-              onError?.(new Error('Google OAuth was cancelled or failed'));
-            }
-          } else {
-            // For authenticated users, just call success (account linking)
-            onSuccess?.();
-          }
-        }, 1500);
-      }
-    }, 500);
-
-    // Cleanup function
-    const cleanup = () => {
-      clearInterval(checkPopup);
-      window.removeEventListener('message', handleMessage);
-    };
-
-    // Timeout after 5 minutes
-    const timeout = setTimeout(() => {
-      if (!popup.closed) {
-        popup.close();
-      }
-      cleanup();
-      onError?.(new Error('OAuth flow timed out'));
-    }, 5 * 60 * 1000);
-
-  } catch (error) {
-    onError?.(error instanceof Error ? error : new Error('Failed to initiate Google OAuth'));
+export const initiateGoogleOAuth = (redirectUri: string = '/dashboard'): void => {
+  if (typeof window === 'undefined') {
+    throw new Error('Google OAuth can only be initiated in the browser');
   }
+
+  // Get current origin (frontend domain)
+  const origin = window.location.origin;
+  
+  // Ensure redirect_uri is a path (starts with /)
+  const redirectPath = redirectUri.startsWith('/') ? redirectUri : `/${redirectUri}`;
+
+  // Build query parameters
+  const params = new URLSearchParams();
+  params.append('redirect_uri', redirectPath);
+  params.append('origin', origin);
+
+  // Redirect to backend login endpoint
+  // Backend will handle OAuth flow and redirect back to frontend with token
+  const authUrl = `https://backend.postsiva.com/auth/google/login?${params.toString()}`;
+  
+  // Simple redirect - backend handles everything
+  window.location.href = authUrl;
+};
+
+/**
+ * Extract and handle Google OAuth token from URL query parameters
+ * This should be called on pages that receive OAuth redirects
+ * 
+ * @returns Object with success status and extracted data
+ */
+export const extractGoogleOAuthTokenFromUrl = (): { success: boolean; token?: string; user?: string; email?: string } => {
+  if (typeof window === 'undefined') {
+    return { success: false };
+  }
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const token = urlParams.get('token');
+  const user = urlParams.get('user');
+  const email = urlParams.get('email');
+  const success = urlParams.get('success') === 'true';
+
+  if (success && token) {
+    // Store token in localStorage
+    setAuthToken(token);
+    
+    // Remove token from URL for security (clean URL)
+    const currentPath = window.location.pathname;
+    window.history.replaceState({}, document.title, currentPath);
+
+    return {
+      success: true,
+      token,
+      user: user || undefined,
+      email: email || undefined,
+    };
+  }
+
+  return { success: false };
 };
 
 /**
  * Handle Google OAuth callback (called from callback page)
+ * Extracts token from URL query parameters and stores it
+ * @deprecated Use extractGoogleOAuthTokenFromUrl instead
  */
-export const handleGoogleOAuthCallback = async (): Promise<void> => {
-  // The callback is handled by the backend API
-  // This function can be empty or used for additional client-side logic
-  const token = getToken();
-  if (!token) {
-    throw new Error('OAuth callback failed - no token found');
-  }
+export const handleGoogleOAuthCallback = (): { success: boolean; token?: string; user?: string; email?: string } => {
+  return extractGoogleOAuthTokenFromUrl();
 };
