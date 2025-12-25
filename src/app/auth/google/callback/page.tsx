@@ -1,31 +1,39 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useState, Suspense, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, CheckCircle2, XCircle } from "lucide-react";
 import { motion } from "framer-motion";
 import { extractGoogleOAuthTokenFromUrl } from "@/hooks/auth/googleOAuth";
+import { useLinkedIn } from "@/hooks/linkedin";
 
 function GoogleAuthCallbackContent() {
   const router = useRouter();
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [message, setMessage] = useState("Processing Google authentication...");
+  const { isConnected, isLoading: linkedInLoading, checkConnection } = useLinkedIn();
+  const linkedInCheckedRef = useRef(false);
+  const redirectingRef = useRef(false);
+  const tokenExtractedRef = useRef(false);
+  const tokenExtractionSuccessfulRef = useRef(false);
 
+  // Extract token from URL and check LinkedIn connection
   useEffect(() => {
-    // According to the documented flow, backend redirects to frontend with:
-    // ?token={JWT}&user={username}&email={email}&success=true
-    
+    if (tokenExtractedRef.current) return; // Only extract once
+    tokenExtractedRef.current = true;
+
     const result = extractGoogleOAuthTokenFromUrl();
 
     if (result.success && result.token) {
+      tokenExtractionSuccessfulRef.current = true;
       setStatus("success");
-      setMessage("Authentication successful! Redirecting...");
-
-      // According to the documented flow, backend redirects directly to redirect_path
-      // But if we're on the callback page, redirect to dashboard
-      setTimeout(() => {
-        router.replace("/dashboard");
-      }, 1500);
+      setMessage("Authentication successful! Checking LinkedIn connection...");
+      
+      // Check LinkedIn connection after authentication (similar to login page)
+      if (!linkedInCheckedRef.current) {
+        linkedInCheckedRef.current = true;
+        checkConnection();
+      }
     } else {
       // Error case - backend should have redirected with error parameter if there was an issue
       setStatus("error");
@@ -35,7 +43,27 @@ function GoogleAuthCallbackContent() {
         router.replace("/login");
       }, 2000);
     }
-  }, [router]);
+  }, [checkConnection, router]);
+
+  // Redirect based on LinkedIn connection status (similar to login page)
+  useEffect(() => {
+    // Only redirect if token was successfully extracted and we haven't redirected yet
+    if (!tokenExtractionSuccessfulRef.current || redirectingRef.current) return;
+
+    // Wait for LinkedIn check to complete
+    if (linkedInLoading || !linkedInCheckedRef.current) return;
+
+    redirectingRef.current = true;
+    setMessage("Redirecting...");
+
+    // Redirect based on LinkedIn connection status (just like in simple auth)
+    // If isConnected is true, go to dashboard/profile; if false, go to LinkedIn connect
+    if (isConnected) {
+      router.replace("/dashboard/profile");
+    } else {
+      router.replace("/linkedin-connect");
+    }
+  }, [isConnected, linkedInLoading, router]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-white to-primary/5 flex items-center justify-center p-4">
